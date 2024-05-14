@@ -25,11 +25,13 @@ class StateEstimation:
         self.v = 0 
         self.w = 0
         self.X = np.array([[self.x], [self.y], [self.theta], [self.v], [self.w]])
-        self.deltaT = 1 / 50
+        self.deltaT = 1 / 10
         self.P = np.eye(5) * 0.00001
         self.F = np.eye(5)
         self.Q = np.eye(5) * 0.0001
-        self.R = np.eye(2) * 0.0001
+        #self.R = np.eye(2) * 0.0001  # old
+        self.R = np.array([[0.001, 0],
+                          [0, 0.00001]])
         self.K = np.zeros((5, 2))
         self.Z = np.array([[self.v], [self.w]])
 
