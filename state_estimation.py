@@ -15,68 +15,83 @@ class StateEstimation:
         
         self.estimate_publisher = rospy.Publisher("estimation", PoseWithCovarianceStamped, queue_size=1)
         
-        self.command_subscriber = rospy.Subscriber("/cmd_vel", Twist, self.receive_input)
+        #self.command_subscriber = rospy.Subscriber("/cmd_vel", Twist, self.receive_input)
         self.odom_subscriber = rospy.Subscriber("/odom", Odometry, self.receive_odom)
-        self.imu_subscriber = rospy.Subscriber("/imu", Imu, self.receive_imu)
+        #self.imu_subscriber = rospy.Subscriber("/imu", Imu, self.receive_imu)
         
-        self.x = 0
-        self.y = 0
-        self.theta = 0
-        self.v = 0 
-        self.w = 0
-        self.X = np.array([[self.x], [self.y], [self.theta], [self.v], [self.w]])
-        self.deltaT = 1 / 10
-        self.P = np.eye(5) * 0.00001
+        self.X = np.zeros((5, 1))
+        #self.X[0][0] = self.x
+        #self.X[1][0] = self.y
+        #self.X[2][0] = self.theta
+        #self.X[3][0] = self.v
+        #self.X[4][0] = self.w
+        
+        self.frenT = 1 / 10 # 20hz
+        self.P = np.eye(5) * 0.01
         self.F = np.eye(5)
-        self.Q = np.eye(5) * 0.0001
+        #self.Q = np.eye(5) * 0.0001
+        self.Q = np.diag([0.0001, 0.0001, 0.001, 0, 0])  # 调整过程噪声矩阵
         #self.R = np.eye(2) * 0.0001  # old
-        self.R = np.array([[0.001, 0],
-                          [0, 0.00001]])
-        self.K = np.zeros((5, 2))
-        self.Z = np.array([[self.v], [self.w]])
-
+        self.R = np.array([[0.001, 0],	#0.001
+                          [0, 0.00001]]) # 0.0001
         self.C = np.array([[0, 0, 0, 1, 0],
                            [0, 0, 0, 0, 1]])
-
-        self.timer = rospy.Timer(rospy.Duration(self.deltaT), self.timer_callback)
+        self.K = np.zeros((5, 2))
+        self.K = self.P @ self.C.T @ np.linalg.inv(self.C @ self.P @ self.C.T + self.R) # Matrice de gain de Kalman
+        #self.Z = np.array([[self.v], [self.w]]) # avec problems
+        self.Z = np.zeros((2, 1))
+                        
+        self.last_time = rospy.Time.now().to_sec()
+        self.now_time = rospy.Time.now().to_sec()
+        self.deltaT = 0
+        self.timer = rospy.Timer(rospy.Duration(self.frenT), self.timer_callback)
 
     def timer_callback(self, event):
-        # Prediction step
-        self.x += self.v * math.cos(self.theta) * self.deltaT
-        self.y += self.v * math.sin(self.theta) * self.deltaT
-        self.theta += self.w * self.deltaT
-
-        self.X = np.array([[self.x], [self.y], [self.theta], [self.v], [self.w]])
-
-        self.F[0][2] = -self.v * self.deltaT * math.sin(self.theta)
-        self.F[0][3] = self.deltaT * math.cos(self.theta)
-        self.F[1][2] = self.v * self.deltaT * math.cos(self.theta)
-        self.F[1][3] = self.deltaT * math.sin(self.theta)
+        self.now_time = rospy.Time.now().to_sec()
+        self.deltaT = self.now_time - self.last_time
+    	
+    	# Fk est la Jacobienne de f suivant X, au point Xk|k
+        self.F[0][2] = -self.X[3][0] * self.deltaT * math.sin(self.X[2][0])
+        self.F[0][3] = self.deltaT * math.cos(self.X[2][0])
+        self.F[1][2] = self.X[3][0] * self.deltaT * math.cos(self.X[2][0])
+        self.F[1][3] = self.deltaT * math.sin(self.X[2][0])
         self.F[2][4] = self.deltaT
-
-        self.P = self.F @ self.P @ self.F.T + self.Q
-
-        # Correction step
-        self.K = self.P @ self.C.T @ np.linalg.inv(self.C @ self.P @ self.C.T + self.R)
-        self.X = self.X + self.K @ (self.Z - self.C @ self.X)
-        self.P = (np.eye(5) - self.K @ self.C) @ self.P
-
+    
+        # Prediction step Xk+1/k = f(Xk/k)
+        self.X[0][0] += self.X[3][0] * math.cos(self.X[2][0]) * self.deltaT
+        self.X[1][0] += self.X[3][0] * math.sin(self.X[2][0]) * self.deltaT
+        self.X[2][0] += self.X[4][0] * self.deltaT
+        
+  
+	# Adjust Q based on current velocities
+        self.Q[3][3] = self.X[3][0] * 0.05  
+        self.Q[4][4] = self.X[4][0] * 0.05  
+	
+        #Pk+1|k = Fk Pk|k FTk + Q
+        self.P = self.F @ self.P @ self.F.T + self.Q  # Pk+1/k
+        
+        self.last_time = self.now_time
         self.publish_estimate()
-
+    
+    # no use
     def receive_input(self, twist_msg: Twist):
-        linear_velocity = twist_msg.linear.x
-        angular_velocity = twist_msg.angular.z
-
-        self.v = linear_velocity
-        self.w = angular_velocity
+        linear_velocity_input = twist_msg.linear.x
+        angular_velocity_input = twist_msg.angular.z
+        if abs(angular_velocity_input) > 2 :
+            return
+        self.X[3][0] = linear_velocity_input
+        self.X[4][0] = angular_velocity_input
 
     def receive_odom(self, odom_msg: Odometry):
         linear_velocity = odom_msg.twist.twist.linear.x
         angular_velocity = odom_msg.twist.twist.angular.z
-
         self.Z[0][0] = linear_velocity
         self.Z[1][0] = angular_velocity
-
+        # Correction step
+        self.X = self.X + self.K @ (self.Z - self.C @ self.X)
+        self.P = (np.eye(5) - self.K @ self.C) @ self.P
+        self.K = self.P @ self.C.T @ np.linalg.inv(self.C @ self.P @ self.C.T + self.R)
+    # no use
     def receive_imu(self, imu_msg: Imu):
         linear_acceleration = imu_msg.linear_acceleration # Attention, contient .x .y et .z
         angular_velocity = imu_msg.angular_velocity.z
