@@ -1,32 +1,40 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import math
 from geometry_msgs.msg import Pose2D, Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from tf.transformations import euler_from_quaternion
 
 class RobotController:
     def __init__(self):
-        rospy.init_node('robot_controller', anonymous=True)
-        self.target_pose_sub = rospy.Subscriber('/target_pose', Pose2D, self.target_pose_callback)
-        self.current_pose_sub = rospy.Subscriber("estimation", PoseWithCovarianceStamped, self.current_pose_callback)
-        self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-        
         self.current_pose = Pose2D()
         self.target_pose = Pose2D()
         self.target_received = False
+        rospy.init_node('robot_controller', anonymous=True)
+        
+        self.current_pose_sub = rospy.Subscriber("estimation", PoseWithCovarianceStamped, self.current_pose_callback)
+        self.target_pose_sub = rospy.Subscriber('/target_pose', Pose2D, self.target_pose_callback)
+        self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
     def target_pose_callback(self, msg):
-        self.target_pose = msg
+        self.target_pose.x = msg.x+self.current_pose.x
+        self.target_pose.y = msg.y+self.current_pose.y
+        self.target_pose.theta = msg.theta+self.current_pose.theta
         self.target_received = True
+        rospy.loginfo(f"Target Pose Received: x={self.target_pose.x}, y={self.target_pose.y}, theta={self.target_pose.theta}")
+        
 
     def current_pose_callback(self, msg):
-        
-        current_pose.x = msg.pose.pose.position.x
-        current_pose.y = msg.pose.pose.position.y
+        self.current_pose.x = msg.pose.pose.position.x
+        self.current_pose.y = msg.pose.pose.position.y
         # 假设姿态是通过四元数表示的，需要将其转换为欧拉角
-        roll, pitch, yaw = self.quaternion_to_euler(msg.pose.pose.orientation)
-        current_pose.theta = yaw
-        
+        orientation_q = msg.pose.pose.orientation
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+        self.current_pose.theta = yaw
+        rospy.loginfo(f"Current Pose Received: x={self.current_pose.x}, y={self.current_pose.y}, theta={self.current_pose.theta}")
+
     def move_to_target(self):
         rate = rospy.Rate(10)  # 10 Hz
 
@@ -34,7 +42,7 @@ class RobotController:
             if self.target_received:
                 dx = self.target_pose.x - self.current_pose.x
                 dy = self.target_pose.y - self.current_pose.y
-                distance = math.sqrt(dx*dx + dy*dy)
+                distance = math.sqrt(dx * dx + dy * dy)
                 target_angle = math.atan2(dy, dx)
                 angle_diff = target_angle - self.current_pose.theta
 
@@ -58,4 +66,5 @@ if __name__ == '__main__':
         controller.move_to_target()
     except rospy.ROSInterruptException:
         pass
+
 

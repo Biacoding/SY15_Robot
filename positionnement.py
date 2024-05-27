@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import math
@@ -23,12 +23,13 @@ class LaserScanProcessor:
         if max_index != -1:
             angle = data.angle_min + max_index * data.angle_increment
             distance = data.ranges[max_index]
-
+            rospy.loginfo(f"angle={angle}, distance={distance},{max_index}")
             target_pose = Pose2D()
             target_pose.x = distance * math.cos(angle)
             target_pose.y = distance * math.sin(angle)
             target_pose.theta = angle
 
+            rospy.loginfo(f"Target Pose Received: x={target_pose.x}, y={target_pose.y}, theta={target_pose.theta}")
             self.target_pose_pub.publish(target_pose)
             self.target_detected = True
 
