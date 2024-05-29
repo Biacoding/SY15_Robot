@@ -31,6 +31,10 @@ def find_perpendicular_points_near_midpoint(x1, y1, x2, y2, distance_from_midpoi
     point2 = (mx + distance_from_midpoint * vx2, my + distance_from_midpoint * vy2)
     
     return point1, point2
+def calculate_angle(mx, my, px, py):
+    angle_radians = math.atan2(py - my, px - mx)
+    angle_degrees = math.degrees(angle_radians)
+    return angle_degrees
 """
 # 示例使用
 x1, y1 = 1, 2
