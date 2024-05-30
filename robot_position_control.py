@@ -48,7 +48,7 @@ class RobotController:
 
                 cmd_vel = Twist()
 
-                if distance > 0.02:  # 距离大于20厘米时移动
+                if distance > 0.02:  # 距离大于2厘米时移动
                     cmd_vel.linear.x = 0.5 * distance
                     cmd_vel.angular.z = 4.0 * angle_diff
                 else:  # 调整朝向
