@@ -45,6 +45,7 @@ class LaserScanProcessor:
         self.target_pose_pub = rospy.Publisher('/target_pose', Pose2D, queue_size=10)
         self.current_pose_sub = rospy.Subscriber("estimation", PoseWithCovarianceStamped, self.current_pose_callback)
         self.target_detected = False
+        
         self.current_pose = Pose2D()
         self.x_fixed = 0
         self.y_fixed = 0
@@ -70,20 +71,28 @@ class LaserScanProcessor:
         close_intensity = -1.0
         close_index = -1
         value_close = 0.5
+        
+        old_intense = 0
 
         # 定义合理的距离范围
         min_distance = 0.1
         max_distance = 10.0
         
         for i in range(len(data.ranges)):
-            if min_distance <= data.ranges[i] <= max_distance:
-                if data.intensities[i] > value_close and (close_index == -1 or data.ranges[i] < data.ranges[close_index]):
-                    close_intensity = data.intensities[i]
-                    close_index = i
+            if data.intensities[i] < value_close and old_intense > value_close:
+                close_index = i - 1
+            if data.intensities[i] > value_far and old_intense < value_far:
+                far_index = i
+            old_intense = data.intensities[i]
+            
+            # if min_distance <= data.ranges[i] <= max_distance:
+            #     if data.intensities[i] > value_close and (close_index == -1 or data.ranges[i] < data.ranges[close_index]):
+            #         close_intensity = data.intensities[i]
+            #         close_index = i
 
-                if data.intensities[i] > value_far and (far_index == -1 or data.ranges[i] > data.ranges[far_index]):
-                    far_intensity = data.intensities[i]
-                    far_index = i
+            #     if data.intensities[i] > value_far and (far_index == -1 or data.ranges[i] > data.ranges[far_index]):
+            #         far_intensity = data.intensities[i]
+            #         far_index = i
 
         if far_index != -1 and close_index != -1:
             angle_far = data.angle_min + far_index * data.angle_increment
