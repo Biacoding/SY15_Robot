@@ -12,11 +12,12 @@ class RobotController:
         rospy.init_node('robot_control', anonymous=True)
         self.vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         self.laser_sub = rospy.Subscriber('/scan', LaserScan, self.laser_callback)
-        self.pose_sub = rospy.Subscriber("estimation", PoseWithCovarianceStamped, self.pose_callback)
+        self.pose_sub = rospy.Subscriber("/estimation", PoseWithCovarianceStamped, self.pose_callback)
+        # self.odom_sub = rospy.Subscriber("/odom", Odometry, self.pose_callback)
 
         self.current_pose = None  # 初始化存储当前位姿的变量
         self.current_scan = None
-        self.goal = {'x': -3.0, 'y': 0.0}  # 目标位置
+        self.goal = {'x': -1.0, 'y': 1.0}  # 目标位置
 
     def pose_callback(self, msg):
         self.current_pose = {
@@ -63,22 +64,18 @@ class RobotController:
     
         # 当前朝向
         current_angle = pose['theta']
-        print(current_angle)
+        print(math.cos(current_angle))
         # 角度差
         angle_diff = self.normalize_angle(target_angle - current_angle)
         
         # 将力转换为速度指令
-        if abs(angle_diff) > 0.05:
-              command.angular.z = 0.15 * angle_diff  # 调整旋转速度系数
-        else:
-              command.angular.z = 0
-        
         dist = math.sqrt(force_x**2 + force_y**2)
-        if dist > 0.05:
-              command.linear.x = 0.05    # 调整前进速度系数
+        if abs(angle_diff) > 0.05 and dist > 0.05:
+              command.angular.z = 0.5 * angle_diff/abs(angle_diff)  # 调整旋转速度系数
         else:
-              command.linear.x = 0
-
+              if dist > 0.05:
+                  command.linear.x = 0.3    # 调整前进速度系数
+        print(command.angular.x, command.angular.z)
         return command
 
     def normalize_angle(self, angle):
