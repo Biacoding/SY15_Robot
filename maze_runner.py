@@ -72,8 +72,8 @@ class MazeSolver:
         while not rospy.is_shutdown():
             if self.laser_ranges:
                 front_distance = min(min(self.laser_ranges[0:30]),  min(self.laser_ranges[-30:]))  # 前方距离
-                left_distance = min(self.laser_ranges[25:90])  # 左侧距离
-                right_distance = min(self.laser_ranges[-90:-25])  # 右侧距离
+                left_distance = min(self.laser_ranges[30:80])  # 左侧距离
+                right_distance = min(self.laser_ranges[-80:-30])  # 右侧距离
                 out_maze_detector = min(min(self.laser_ranges[0:20]),  min(self.laser_ranges[-20:]))
 
                 left_front = min(self.laser_ranges[30:60])
@@ -135,11 +135,14 @@ class MazeSolver:
                         turning = True
                         distance_passed = 0
                         right_cross_detected = False
+                        self.turning_direction = None
                         twist.linear.x = 0
 
                     elif turning and abs(yaw_old - self.yaw) > 0.2:
                         print("passed 0.05")
                         print(yaw_old, self.yaw)
+                        avoid_enabled = False
+                        self.turning_direction = None
                         twist.angular.z = -0.5  # you转
                         twist.linear.x = 0.0
 
