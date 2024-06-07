@@ -38,12 +38,11 @@ class RobotController:
     def current_pose_callback(self, msg):
         self.current_pose.x = msg.pose.pose.position.x
         self.current_pose.y = msg.pose.pose.position.y
-        # 假设姿态是通过四元数表示的，需要将其转换为欧拉角
+        
         orientation_q = msg.pose.pose.orientation
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
         self.current_pose.theta = yaw
-        # rospy.loginfo(f"Current Pose Received: x={self.current_pose.x}, y={self.current_pose.y}, theta={self.current_pose.theta}")
 
     def move_to_target(self):
         rate = rospy.Rate(10)  # 10 Hz
@@ -67,27 +66,12 @@ class RobotController:
                 elif front_distance > circle_distance:
                     cmd_vel.linear.x = 0.0
                     cmd_vel.angular.z = 0.5
-                # elif abs(angle_diff) > 0.1:
-                #     cmd_vel.linear.x = 0.0
-                #     cmd_vel.angular.z = 0.5
                 else:
-                    # 到达目标
                     cmd_vel.linear.x = 0.0
                     cmd_vel.angular.z = 0.0
                     self.cmd_vel_pub.publish(cmd_vel)
                     rospy.loginfo("Reached the goal!")
                     break
-
-                # if distance > 0.05:  # 距离大于20厘米时移动
-                #     cmd_vel.linear.x = 0.5
-                #     cmd_vel.angular.z = 0.5 * angle_diff
-                # else:  # 调整朝向
-                #     cmd_vel.linear.x = 0
-                #     cmd_vel.angular.z = 0.5 
-                #     if abs(angle_diff) < 0.1:
-                #         self.target_received = False  # 到达目标位置并朝向标志牌后停止                            
-                #         cmd_vel.linear.x = 0
-                #         cmd_vel.angular.z = 0
 
                 self.cmd_vel_pub.publish(cmd_vel)
 
