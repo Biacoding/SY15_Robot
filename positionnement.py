@@ -25,7 +25,6 @@ def find_perpendicular_points_near_midpoint(x1, y1, x2, y2, distance_from_midpoi
     distance = calculate_distance(x1, y1, x2, y2)
     ux, uy = calculate_unit_vector(x1, y1, x2, y2, distance)
     
-    # 垂直向量
     vx1, vy1 = -uy, ux
     vx2, vy2 = uy, -ux
     
@@ -55,12 +54,11 @@ class LaserScanProcessor:
     def current_pose_callback(self, msg):
         self.current_pose.x = msg.pose.pose.position.x
         self.current_pose.y = msg.pose.pose.position.y
-        # 假设姿态是通过四元数表示的，需要将其转换为欧拉角
+        
         orientation_q = msg.pose.pose.orientation
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
         self.current_pose.theta = yaw
-        # rospy.loginfo(f"Current Pose Received: x={self.current_pose.x}, y={self.current_pose.y}, theta={self.current_pose.theta}")
 
         
     def scan_callback(self, data):
@@ -74,7 +72,6 @@ class LaserScanProcessor:
         
         old_intense = 0
 
-        # 定义合理的距离范围
         min_distance = 0.1
         max_distance = 10.0
         
