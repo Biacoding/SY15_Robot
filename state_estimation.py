@@ -30,7 +30,7 @@ class StateEstimation:
         self.P = np.eye(5) * 0.01
         self.F = np.eye(5)
         #self.Q = np.eye(5) * 0.0001
-        self.Q = np.diag([0.0001, 0.0001, 0.001, 0, 0])  # 调整过程噪声矩阵
+        self.Q = np.diag([0.0001, 0.0001, 0.001, 0, 0])  # Ajuster la matrice de bruit de processus
         #self.R = np.eye(2) * 0.0001  # old
         self.R = np.array([[0.001, 0],	#0.001
                           [0, 0.00001]]) # 0.0001
