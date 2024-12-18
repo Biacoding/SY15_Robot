@@ -14,9 +14,9 @@ class RobotController:
         self.laser_sub = rospy.Subscriber('/scan', LaserScan, self.laser_callback)
         self.pose_sub = rospy.Subscriber("estimation", PoseWithCovarianceStamped, self.pose_callback)
 
-        self.current_pose = None  # 初始化存储当前位姿的变量
+        self.current_pose = None  # Initialiser la variable qui stocke la pose actuelle
         self.current_scan = None
-        self.goal = {'x': -3.0, 'y': 0.0}  # 目标位置
+        self.goal = {'x': -3.0, 'y': 0.0}  # Emplacement cible
 
     def pose_callback(self, msg):
         self.current_pose = {
@@ -26,14 +26,14 @@ class RobotController:
         }
 
     def quaternion_to_euler(self, quat):
-        # 将四元数转换为欧拉角，假设四元数是标准化的
+        # Conversion des quaternions en angles d'Euler, en supposant que les quaternions sont normalisés
         euler = tf.transformations.euler_from_quaternion([
             quat.x,
             quat.y,
             quat.z,
             quat.w
         ])
-        return euler[2]  # 返回偏航角
+        return euler[2]  # Retour de l'angle de lacet
 
     def laser_callback(self, data):
         self.current_scan = data.ranges
@@ -53,36 +53,36 @@ class RobotController:
         attract = self.calculate_attractive_force(pose)
         #repulse = self.calculate_repulsive_force(scan, pose)
 
-        # 计算总力
+        # Calculer la force totale
         #force_x = attract['x'] + repulse['x']
         #force_y = attract['y'] + repulse['y']
         force_x = attract['x']
         force_y = attract['y']
-        # 目标角度（弧度）
+        # Angle cible (radians)
         target_angle = math.atan2(force_y, force_x)
     
-        # 当前朝向
+        # Orientation actuelle
         current_angle = pose['theta']
         print(current_angle)
-        # 角度差
+        # différence angulaire
         angle_diff = self.normalize_angle(target_angle - current_angle)
         
-        # 将力转换为速度指令
+        # Convertit la force en commande de vitesse
         if abs(angle_diff) > 0.05:
-              command.angular.z = 0.15 * angle_diff  # 调整旋转速度系数
+              command.angular.z = 0.15 * angle_diff  # Ajustement du facteur de vitesse de rotation
         else:
               command.angular.z = 0
         
         dist = math.sqrt(force_x**2 + force_y**2)
         if dist > 0.05:
-              command.linear.x = 0.05    # 调整前进速度系数
+              command.linear.x = 0.05    # Ajustement du facteur de vitesse d'avancement
         else:
               command.linear.x = 0
 
         return command
 
     def normalize_angle(self, angle):
-        # 规范化角度到 [-π, π]区间
+        # Angle normalisé par rapport à l'intervalle [-π, π].
         while angle > math.pi:
             angle -= 2 * math.pi
         while angle < -math.pi:
@@ -90,10 +90,10 @@ class RobotController:
         return angle
 
     def calculate_attractive_force(self, pose):
-        # 吸引力向目标方向
+        # Attractivité en direction de la cible
         force_x = self.goal['x'] - pose['x']
         force_y = self.goal['y'] - pose['y']
-        # 简单归一化
+        
         norm = math.sqrt(force_x**2 + force_y**2)
         if norm > 0:
             return {'x': force_x, 'y': force_y}
@@ -102,12 +102,12 @@ class RobotController:
             return {'x': 0, 'y': 0}
 
     def calculate_repulsive_force(self, scan, pose):
-        # 斥力由附近的障碍物产生
+        # Les forces de répulsion sont générées par les obstacles proches
         force_x = 0
         force_y = 0
         for i, distance in enumerate(scan):
-            if distance < 1.0:  # 斥力作用距离
-                angle = i * (2 * math.pi / len(scan)) - math.pi  # 计算障碍物方向
+            if distance < 1.0:  # Distance de répulsion
+                angle = i * (2 * math.pi / len(scan)) - math.pi  # Calculer la direction de l'obstacle
                 force_x -= (1.0 - distance) * math.cos(angle)
                 force_y -= (1.0 - distance) * math.sin(angle)
         return {'x': force_x, 'y': force_y}
