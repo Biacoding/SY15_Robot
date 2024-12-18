@@ -6,7 +6,7 @@ This project is “SY15: Traversée d’un labyrinthe”. Detailed requirements 
 
 ## Project Report
 
-The final project report is available in the file `rapport`. It contains an in-depth analysis, methodologies used, results, and conclusions derived from the project.
+The final project report is available in the file `SY15 projet Rapport.pdf`. It contains an in-depth analysis, methodologies used, results, and conclusions derived from the project.
 
 Thank you for your interest in this project!
 
