@@ -12,28 +12,28 @@ class MazeSolver:
     def __init__(self):
         rospy.init_node('maze_solver', anonymous=True)
 
-        # 目标位置
+        # localisation de la cible
         self.goal = Point()
         self.goal.x = rospy.get_param('~goal_x', 5.0)
         self.goal.y = rospy.get_param('~goal_y', 0.0)
 
-        # 机器人当前位置
+        # Position actuelle du robot
         self.position = Point()
         self.yaw = 0.0
 
-        # 激光雷达数据
+        # Données LiDAR
         self.laser_min = 0.0
         self.laser_ranges = []
 
-        # 记录当前的转向方向
+        # Enregistrer la direction actuelle de la direction
         self.turning_direction = None
 
-        # 订阅必要的话题
+        # S'abonner aux thèmes essentiels
         #rospy.Subscriber('/odom', Odometry, self.odom_callback)
         rospy.Subscriber("estimation", PoseWithCovarianceStamped, self.state_callback)
         rospy.Subscriber('/scan', LaserScan, self.laser_callback)
 
-        # 发布控制指令
+        # Émission d'ordres de contrôle
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         self.rate = rospy.Rate(10)
@@ -70,9 +70,9 @@ class MazeSolver:
 
         while not rospy.is_shutdown():
             if self.laser_ranges:
-                front_distance = min(min(self.laser_ranges[0:25]),  min(self.laser_ranges[-25:]))  # 前方距离
-                left_distance = min(self.laser_ranges[25:90])  # 左侧距离
-                right_distance = min(self.laser_ranges[-90:-25])  # 右侧距离
+                front_distance = min(min(self.laser_ranges[0:25]),  min(self.laser_ranges[-25:]))  # distance avant
+                left_distance = min(self.laser_ranges[25:90])  # Distance à gauche
+                right_distance = min(self.laser_ranges[-90:-25])  # Distance à droite
 
                 left_front = min(self.laser_ranges[30:60])
                 left_back = min(self.laser_ranges[120:150])
@@ -82,16 +82,16 @@ class MazeSolver:
 
                 left_vertical_angel_diff = self.laser_ranges.index(min(self.laser_ranges[60:120])) - 90
 
-                max_left_distance = max(self.laser_ranges[30:90])  # 左侧距离
-                max_right_distance = max(self.laser_ranges[-90:-30])  # 右侧距离
+                max_left_distance = max(self.laser_ranges[30:90])  # Distance à gauche
+                max_right_distance = max(self.laser_ranges[-90:-30])  # Distance à droite
                 
                 if front_distance > 0.5 :
                     print("not in the maze")
-                    # 清除转向方向
+                    # Une direction claire
                     self.turning_direction = None
                     # turning = False
 
-                    # 朝目标位置前进
+                    # Se rapprocher de la position cible.
                     distance = self.get_distance_to_goal()
                     angle = self.get_angle_to_goal()
                     angle_diff = angle - self.yaw
@@ -100,7 +100,7 @@ class MazeSolver:
                         twist.linear.x = 0.2
                         twist.angular.z = 0.5 * angle_diff
                     else:
-                        # 到达目标
+                        # Se rendre sur place
                         twist.linear.x = 0.0
                         twist.angular.z = 0.0
                         self.cmd_vel_pub.publish(twist)
@@ -111,24 +111,24 @@ class MazeSolver:
 
                 if front_distance < 0.25 :
                     turning = False
-                    # 遇到障碍物，选择转弯方向
+                    # Rencontrer un obstacle et choisir la direction du virage
                     if self.turning_direction is None:
                         if right_distance < 0.3 and max_left_distance >  max_right_distance:
                             self.turning_direction = 'left'
-                            twist.angular.z = 0.3  # 左转
+                            twist.angular.z = 0.3  # tourner à droite
                             print("jin zuo")
                         else:# left_distance < 0.25:
                             self.turning_direction = 'right'
-                            twist.angular.z = -0.3  # 右转
+                            twist.angular.z = -0.3  # tourner à droite
                             print("jin you")
                         # elif left_distance > right_distance:
                         #     self.turning_direction = 'left'
-                        #     twist.angular.z = 0.5  # 左转       
+                        #     twist.angular.z = 0.5       
                         # else:
                         #     self.turning_direction = 'right'
-                        #     twist.angular.z = -0.5  # 右转
+                        #     twist.angular.z = -0.5  
                     else:
-                        # 保持当前转向方向
+                        # Maintien de la direction actuelle
                         twist.angular.z = 0.5 if self.turning_direction == 'left' else -0.5
 
                     twist.linear.x = 0.0
@@ -139,7 +139,7 @@ class MazeSolver:
                     twist.linear.x = 0
 
                 elif turning and abs(yaw_old - self.yaw) > 0.2:
-                    twist.angular.z = 0.5  # 左转
+                    twist.angular.z = 0.5 
                     twist.linear.x = 0.0
 
                 elif left_cross_dector > 0.1 + left_distance_old and left_distance_old > 0 and not left_cross_detected:
@@ -155,11 +155,11 @@ class MazeSolver:
                         yaw_old += 2*math.pi
 
                 else:
-                    # 清除转向方向
+                    # Une direction claire
                     self.turning_direction = None
                     # turning = False
 
-                    # 朝目标位置前进
+                    # Se rapprocher de la position cible.
                     distance = self.get_distance_to_goal()
                     angle = self.get_angle_to_goal()
                     angle_diff = angle - self.yaw
@@ -173,13 +173,13 @@ class MazeSolver:
                         else:
                             twist.angular.z = 0
                         # if left_distance < 0.15:
-                        #     twist.angular.z = -0.5  # 右转
+                        #     twist.angular.z = -0.5 
                         # elif right_distance < 0.15:
-                        #     twist.angular.z = 0.5  # 左转
+                        #     twist.angular.z = 0.5  
                         # else:
                         #     twist.angular.z = 0.5 * angle_diff
                     else:
-                        # 到达目标
+                        # Se rendre sur place
                         twist.linear.x = 0.0
                         twist.angular.z = 0.0
                         self.cmd_vel_pub.publish(twist)
